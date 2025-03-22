@@ -9,7 +9,7 @@ import { COLORS, FONT_SIZES } from '@util/global-client';
 
 
 
-export default function PromptCreate() {
+export default function Prompt() {
     const router = useRouter();
 
     const goToCapture = () => {
