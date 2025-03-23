@@ -1,5 +1,6 @@
-import GoBackHeader from '@components/GoBackHeader';
 import { View, Image } from 'react-native';
+
+import GoBackHeader from '@components/GoBackHeader';
 
 
 

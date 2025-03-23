@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 
 import Review from '@screens/post/Create/Review';
 
-import { SafeAreaFull } from '@components/SafeArea';
+import GoBackHeader from '@components/GoBackHeader';
 
 
 
@@ -13,9 +13,8 @@ export default function Index() {
 
     return (
         <View style={{ flex: 1 }}>
-            <SafeAreaFull>
-                <Review pictureUri={pictureUri} />
-            </SafeAreaFull>
+            <GoBackHeader />
+            <Review pictureUri={pictureUri} />
         </View>
     );
 }
