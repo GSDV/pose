@@ -1,4 +1,5 @@
 export interface Dot {
+    id: string,
     url?: string,
     price?: number,
     currency: string,
