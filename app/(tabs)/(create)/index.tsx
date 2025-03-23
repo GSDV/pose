@@ -10,7 +10,7 @@ import { COLORS } from '@util/global-client';
 
 export default function Index() {
     return (
-        <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <View style={{ flex: 1 }}>
             <SafeAreaFull>
                 <Prompt />
             </SafeAreaFull>
