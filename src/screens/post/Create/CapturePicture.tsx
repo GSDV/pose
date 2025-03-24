@@ -1,17 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 
-import { View, StyleSheet, Pressable, Image } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+
+import { useRouter } from 'expo-router';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 
-import { SafeAreaBottom, SafeAreaFull } from '@components/SafeArea';
+import { SafeAreaBottom } from '@components/SafeArea';
 
 import { COLORS } from '@util/global-client';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
 
 
@@ -49,7 +51,6 @@ export default function CapturePicture() {
 
 
     useEffect(() => {
-        // Request camera permissions when component mounts
         (async () => {
             if (!permission?.granted) await requestPermission();
         })();
