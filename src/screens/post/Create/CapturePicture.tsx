@@ -40,8 +40,9 @@ export default function CapturePicture() {
         };
         const picture = await cameraRef.current.takePictureAsync(options);
         if (picture == undefined) return;
+
         router.push({
-            pathname: '/(tabs)/(create)/review',
+            pathname: '/(tabs)/(create)/crop',
             params: { pictureUri: picture.uri }
         });
     }
