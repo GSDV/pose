@@ -31,9 +31,10 @@ export default function Prompt() {
 const styles = StyleSheet.create({
     container: {
         padding: 20,
+        paddingTop: '25%',
         flex: 1,
         alignItems: 'center',
-        gap: 20
+        gap: 25
     },
     text: {
         fontSize: FONT_SIZES.xxl,
