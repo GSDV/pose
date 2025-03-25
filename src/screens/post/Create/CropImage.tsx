@@ -1,558 +1,614 @@
-import { COLORS } from '@util/global-client';
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, Fragment } from 'react';
+
 import {
-  View,
-  Image,
-  StyleSheet,
-  PanResponder,
-  Dimensions,
-  TouchableOpacity,
-  Text,
-  Alert,
-  GestureResponderEvent,
-  PanResponderGestureState,
+    View,
+    Image,
+    StyleSheet,
+    PanResponder,
+    TouchableOpacity,
+    Text,
+    Alert,
+    AnimatableNumericValue,
+    LayoutChangeEvent,
+    GestureResponderHandlers,
+    StyleProp,
+    ViewStyle,
+    ActivityIndicator,
 } from 'react-native';
 
-interface ImageCropperProps {
-  imageUri: string;
-  onCropComplete: (croppedImageUri: string) => void;
-  onCancel: () => void;
-}
+import * as ImageManipulator from 'expo-image-manipulator';
+
+import { SafeAreaTop } from '@components/SafeArea';
+
+import { COLORS, FONT_SIZES } from '@util/global-client';
+
+
 
 interface CropArea {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
-// Minimum dimensions for the crop frame
-const MIN_CROP_WIDTH = 150;
-const MIN_CROP_HEIGHT = 150;
-const MIN_CROP_SIZE = 200;
-const MIN_ASPECT_RATIO = 1 / 2; // 0.5
-const MAX_ASPECT_RATIO = 2 / 1; // 2.0
+interface ImageDimensions {
+    width: number;
+    height: number;
+}
 
-const ImageCropper: React.FC<ImageCropperProps> = ({
-  imageUri,
-  onCropComplete,
-  onCancel,
-}) => {
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0, x: 0, y: 0 });
-  const [cropArea, setCropArea] = useState<CropArea>({ x: 0, y: 0, width: 0, height: 0 });
-  const [currentAspectRatio, setCurrentAspectRatio] = useState(1);
-  
-  // Get screen dimensions
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height * 0.7; // Use 70% of screen height
-  
-  // Load image dimensions
-  useEffect(() => {
-    if (imageUri) {
-      Image.getSize(imageUri, (width, height) => {
-        setImageSize({ width, height });
-        
-        // Calculate scaled image dimensions to fit screen
-        const scale = Math.min(screenWidth / width, screenHeight / height);
-        const scaledWidth = width * scale;
-        const scaledHeight = height * scale;
-        
-        // Initial crop area at center with default 1:1 aspect ratio
-        // Ensure it meets minimum width and height requirements
-        const initialSize = Math.max(
-          Math.min(scaledWidth, scaledHeight) * 0.8,
-          Math.max(MIN_CROP_WIDTH, MIN_CROP_HEIGHT)
-        );
-        const initialCrop = {
-          x: (scaledWidth - initialSize) / 2,
-          y: (scaledHeight - initialSize) / 2,
-          width: initialSize,
-          height: initialSize,
-        };
-        
-        setImageLayout({ width: scaledWidth, height: scaledHeight, x: 0, y: 0 });
-        setCropArea(initialCrop);
-        setCurrentAspectRatio(1);
-      });
-    }
-  }, [imageUri]);
-  
-  // Handle crop completion - in a real app, you would use a library like expo-image-manipulator
-  const handleCrop = async () => {
-    try {
-      // This is a simplified example. In a real application, you would use:
-      // import * as ImageManipulator from 'expo-image-manipulator';
-      // 
-      // const manipResult = await ImageManipulator.manipulateAsync(
-      //   imageUri,
-      //   [
-      //     {
-      //       crop: {
-      //         originX: cropArea.x * (imageSize.width / imageLayout.width),
-      //         originY: cropArea.y * (imageSize.height / imageLayout.height),
-      //         width: cropArea.width * (imageSize.width / imageLayout.width),
-      //         height: cropArea.height * (imageSize.height / imageLayout.height),
-      //       },
-      //     },
-      //   ],
-      //   { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-      // );
-      // 
-      // onCropComplete(manipResult.uri);
-      
-      // For this example, we'll just return the original URI
-      Alert.alert(
-        "Crop Information",
-        `Crop completed with aspect ratio: ${currentAspectRatio.toFixed(2)}\n
-        Crop dimensions: ${Math.round(cropArea.width)}×${Math.round(cropArea.height)} px\n
-        In a real app, this would crop the image at:
-        x: ${Math.round(cropArea.x * (imageSize.width / imageLayout.width))}
-        y: ${Math.round(cropArea.y * (imageSize.height / imageLayout.height))}
-        width: ${Math.round(cropArea.width * (imageSize.width / imageLayout.width))}
-        height: ${Math.round(cropArea.height * (imageSize.height / imageLayout.height))}`
-      );
-      
-      onCropComplete(imageUri);
-    } catch (error) {
-      console.error('Error cropping image:', error);
-      Alert.alert('Error', 'Failed to crop image');
-    }
-  };
+interface ImageLayout extends ImageDimensions {
+    x: number;
+    y: number;
+}
 
-  // PanResponder for moving the entire crop box
-  const movePanResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => {
-      // Store initial crop area when starting to drag
-    },
-    onPanResponderMove: (_, gestureState) => {
-      const { dx, dy } = gestureState;
-      setCropArea(prev => {
-        // Calculate new position
-        let newX = prev.x + dx;
-        let newY = prev.y + dy;
-        
-        // Keep within image bounds
-        newX = Math.max(0, Math.min(imageLayout.width - prev.width, newX));
-        newY = Math.max(0, Math.min(imageLayout.height - prev.height, newY));
-        
-        return {
-          ...prev,
-          x: newX,
-          y: newY,
-        };
-      });
-    },
-    onPanResponderRelease: () => {
-      // Reset gesture state
-    },
-  });
 
-  // Create PanResponders for each corner and edge
-  const createEdgePanResponder = (edge: string) => {
-    return PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        // Store initial values when starting to resize
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const { dx, dy } = gestureState;
+const MIN_CROP_SIZE = 150;
+const MIN_ASPECT_RATIO = 2 / 5;
+const MAX_ASPECT_RATIO = 1 / 1;
+
+const OVERLAY_SHADOW = 'rgba(0, 0, 0, 0.5)';
+
+const DAGGER_SIZE = 25;
+const DAGGER_HITSLOP = 30;
+
+type CSS_NUM = AnimatableNumericValue | `${number}%`;
+const TRANSLATE = (x: CSS_NUM, y: CSS_NUM) => ([ { translateX: x }, { translateY: y } ]);
+
+
+
+interface ImageCropperProps {
+    imageUri: string;
+    setUri: (uri: string) => void;
+    onCropComplete: (croppedImageUri: string) => void;
+}
+
+export default function CropPicture({ imageUri, setUri, onCropComplete }: ImageCropperProps) {
+    // Original image dimensions
+    const [imageSize, setImageSize] = useState<ImageDimensions>({ width: 0, height: 0 });
+    
+    // Container dimensions and position
+    const [containerLayout, setContainerLayout] = useState<ImageLayout>({ width: 0, height: 0, x: 0, y: 0 });
+    
+    // Actual rendered image dimensions and position within the container
+    const [actualImageLayout, setActualImageLayout] = useState<ImageLayout>({ width: 0, height: 0, x: 0, y: 0 });
+    
+    // Crop area dimensions and position
+    const [cropArea, setCropArea] = useState<CropArea>({ x: 0, y: 0, width: 0, height: 0 });
+
+    // Loading when cropping image.
+    const [loading, setLoading] = useState<boolean>(false);
+    
+
+    // Calculate the actual image layout when rendered with 'contain' mode
+    const calculateActualImageLayout = () => {
+        if (imageSize.width === 0 || containerLayout.width === 0) return;
         
-        setCropArea(prev => {
-          let newX = prev.x;
-          let newY = prev.y;
-          let newWidth = prev.width;
-          let newHeight = prev.height;
-          
-          // Handle resize based on which edge is being dragged
-          // For corners, we need to handle both dimensions simultaneously
-          if (edge === 'topLeft') {
-            newX = prev.x + dx;
-            newY = prev.y + dy;
-            newWidth = prev.width - dx;
-            newHeight = prev.height - dy;
-          } else if (edge === 'topRight') {
-            newY = prev.y + dy;
-            newWidth = prev.width + dx;
-            newHeight = prev.height - dy;
-          } else if (edge === 'bottomLeft') {
-            newX = prev.x + dx;
-            newWidth = prev.width - dx;
-            newHeight = prev.height + dy;
-          } else if (edge === 'bottomRight') {
-            newWidth = prev.width + dx;
-            newHeight = prev.height + dy;
-          } else if (edge === 'left') {
-            newX = prev.x + dx;
-            newWidth = prev.width - dx;
-          } else if (edge === 'right') {
-            newWidth = prev.width + dx;
-          } else if (edge === 'top') {
-            newY = prev.y + dy;
-            newHeight = prev.height - dy;
-          } else if (edge === 'bottom') {
-            newHeight = prev.height + dy;
-          }
-          
-          // Enforce minimum size
-          if (newWidth < MIN_CROP_SIZE) {
-            if (edge.includes('left')) {
-              newX = prev.x + prev.width - MIN_CROP_SIZE;
-            }
-            newWidth = MIN_CROP_SIZE;
-          }
-          
-          if (newHeight < MIN_CROP_SIZE) {
-            if (edge.includes('top')) {
-              newY = prev.y + prev.height - MIN_CROP_SIZE;
-            }
-            newHeight = MIN_CROP_SIZE;
-          }
-          
-          // Keep within image bounds
-          if (newX < 0) {
-            newWidth += newX;
-            newX = 0;
-          }
-          
-          if (newY < 0) {
-            newHeight += newY;
-            newY = 0;
-          }
-          
-          if (newX + newWidth > imageLayout.width) {
-            newWidth = imageLayout.width - newX;
-          }
-          
-          if (newY + newHeight > imageLayout.height) {
-            newHeight = imageLayout.height - newY;
-          }
-          
-          // Enforce aspect ratio limits
-          const aspectRatio = newWidth / newHeight;
-          
-          if (aspectRatio < MIN_ASPECT_RATIO) {
-            // Adjust width or height to maintain minimum aspect ratio
-            if (edge.includes('left') || edge.includes('right')) {
-              newWidth = newHeight * MIN_ASPECT_RATIO;
-            } else {
-              newHeight = newWidth / MIN_ASPECT_RATIO;
-            }
-          } else if (aspectRatio > MAX_ASPECT_RATIO) {
-            // Adjust width or height to maintain maximum aspect ratio
-            if (edge.includes('left') || edge.includes('right')) {
-              newWidth = newHeight * MAX_ASPECT_RATIO;
-            } else {
-              newHeight = newWidth / MAX_ASPECT_RATIO;
-            }
-          }
-          
-          // Final boundary check
-          if (newX + newWidth > imageLayout.width) {
-            if (edge.includes('left')) {
-              newX = imageLayout.width - newWidth;
-            } else {
-              newWidth = imageLayout.width - newX;
-            }
-          }
-          
-          if (newY + newHeight > imageLayout.height) {
-            if (edge.includes('top')) {
-              newY = imageLayout.height - newHeight;
-            } else {
-              newHeight = imageLayout.height - newY;
-            }
-          }
-          
-          return {
-            x: newX,
-            y: newY,
-            width: newWidth,
-            height: newHeight,
-          };
+        // Calculate the scale factor to fit the image within the container
+        const scaleWidth = containerLayout.width / imageSize.width;
+        const scaleHeight = containerLayout.height / imageSize.height;
+        const scale = Math.min(scaleWidth, scaleHeight);
+        
+        // Calculate the actual rendered dimensions
+        const actualWidth = imageSize.width * scale;
+        const actualHeight = imageSize.height * scale;
+        
+        // Calculate the position to center the image within the container
+        const x = (containerLayout.width - actualWidth) / 2;
+        const y = (containerLayout.height - actualHeight) / 2;
+        
+        setActualImageLayout({
+            width: actualWidth,
+            height: actualHeight,
+            x,
+            y
         });
-      },
-      onPanResponderRelease: () => {
-        // Calculate and update aspect ratio
-        setCurrentAspectRatio(cropArea.width / cropArea.height);
-        // Log crop area information for debugging
-        logCropAreaInfo();
-      },
-    });
-  };
 
-  // Create PanResponders for each corner and edge
-  const topLeftResponder = createEdgePanResponder('topLeft');
-  const topResponder = createEdgePanResponder('top');
-  const topRightResponder = createEdgePanResponder('topRight');
-  const rightResponder = createEdgePanResponder('right');
-  const bottomRightResponder = createEdgePanResponder('bottomRight');
-  const bottomResponder = createEdgePanResponder('bottom');
-  const bottomLeftResponder = createEdgePanResponder('bottomLeft');
-  const leftResponder = createEdgePanResponder('left');
-  
-  // For debugging
-  const logCropAreaInfo = () => {
-    console.log(`Crop Area: x=${cropArea.x.toFixed(0)}, y=${cropArea.y.toFixed(0)}, width=${cropArea.width.toFixed(0)}, height=${cropArea.height.toFixed(0)}, ratio=${(cropArea.width/cropArea.height).toFixed(2)}`);
-  };
-  
-  // Update aspect ratio when crop area changes
-  useEffect(() => {
-    setCurrentAspectRatio(cropArea.width / cropArea.height);
-  }, [cropArea.width, cropArea.height]);
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Crop Image</Text>
-        <Text style={styles.aspectRatio}>
-          Aspect Ratio: {currentAspectRatio.toFixed(2)} 
-          (Min: {MIN_ASPECT_RATIO.toFixed(2)}, Max: {MAX_ASPECT_RATIO.toFixed(2)})
-        </Text>
-        <Text style={styles.aspectRatio}>
-          Minimum dimensions: {MIN_CROP_WIDTH}×{MIN_CROP_HEIGHT} px
-        </Text>
-      </View>
-      
-      <View
-        style={[styles.imageContainer, { width: screenWidth, height: screenHeight }]}
-        onLayout={(event) => {
-          const { x, y } = event.nativeEvent.layout;
-          setImageLayout((prev) => ({ ...prev, x, y }));
-        }}
-      >
-        <Image
-          source={{ uri: imageUri }}
-          style={{
-            width: imageLayout.width,
-            height: imageLayout.height,
-            resizeMode: 'contain',
-          }}
-        />
+        // Calculate the largest possible crop area that respects the aspect ratio constraints
+        let cropWidth = actualWidth;
+        let cropHeight = actualHeight;
         
-        <View style={[styles.overlay, { width: imageLayout.width, height: imageLayout.height }]}>
-          {/* Cutout for the crop area */}
-          <View
-            style={[
-              styles.cropArea,
-              {
-                left: cropArea.x,
-                top: cropArea.y,
-                width: cropArea.width,
-                height: cropArea.height,
-              },
-            ]}
-          >
-            {/* Grid lines */}
-            {/* <View style={[styles.gridLine, styles.horizontalTop]} />
-            <View style={[styles.gridLine, styles.horizontalMiddle]} />
-            <View style={[styles.gridLine, styles.horizontalBottom]} />
-            <View style={[styles.gridLine, styles.verticalLeft]} />
-            <View style={[styles.gridLine, styles.verticalMiddle]} />
-            <View style={[styles.gridLine, styles.verticalRight]} /> */}
+        // Check if the current dimensions violate aspect ratio constraints
+        const currentAspectRatio = cropWidth / cropHeight;
+        
+        if (currentAspectRatio < MIN_ASPECT_RATIO) {
+            // Too tall, need to reduce height
+            cropHeight = cropWidth / MIN_ASPECT_RATIO;
+        } else if (currentAspectRatio > MAX_ASPECT_RATIO) {
+            // Too wide, need to reduce width
+            cropWidth = cropHeight * MAX_ASPECT_RATIO;
+        }
+        
+        // Ensure minimum crop size
+        cropWidth = Math.max(cropWidth, MIN_CROP_SIZE);
+        cropHeight = Math.max(cropHeight, MIN_CROP_SIZE);
+        
+        // Center the crop area within the image
+        const cropX = x + (actualWidth - cropWidth) / 2;
+        const cropY = y + (actualHeight - cropHeight) / 2;
+        
+        setCropArea({
+            x: cropX,
+            y: cropY,
+            width: cropWidth,
+            height: cropHeight,
+        });
+    }
+
+    // Load image dimensions
+    useEffect(() => {
+        if (!imageUri) return;
+        
+        Image.getSize(imageUri, (width, height) => {
+            setImageSize({ width, height });
+        });
+    }, [imageUri]);
+
+    // Recalculate actual image layout when container or image size changes
+    useEffect(() => {
+        calculateActualImageLayout();
+    }, [containerLayout, imageSize]);
+
+
+    const handleCrop = async () => {
+        setLoading(true);
+        try {
+            // Convert crop coordinates from rendered view back to original image
+            const cropX = (cropArea.x - actualImageLayout.x) / actualImageLayout.width * imageSize.width;
+            const cropY = (cropArea.y - actualImageLayout.y) / actualImageLayout.height * imageSize.height;
+            const cropWidth = cropArea.width / actualImageLayout.width * imageSize.width;
+            const cropHeight = cropArea.height / actualImageLayout.height * imageSize.height;
             
-            {/* Move handle (center area) */}
-            <View style={styles.moveHandle} {...movePanResponder.panHandlers} />
+            const manipResult = await ImageManipulator.manipulateAsync(
+                imageUri,
+                [
+                    {
+                        crop: {
+                            originX: cropX,
+                            originY: cropY,
+                            width: cropWidth,
+                            height: cropHeight,
+                        },
+                    },
+                ],
+                { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+            );
             
-            {/* Corner and edge handles */}
-            <View style={[styles.dragger, styles.topLeft]} {...topLeftResponder.panHandlers} />
-            <View style={[styles.dragger, styles.top, styles.middleDragger]} {...topResponder.panHandlers} />
-            <View style={[styles.dragger, styles.topRight]} {...topRightResponder.panHandlers} />
-            <View style={[styles.dragger, styles.right, styles.middleDragger]} {...rightResponder.panHandlers} />
-            <View style={[styles.dragger, styles.bottomRight]} {...bottomRightResponder.panHandlers} />
-            <View style={[styles.dragger, styles.bottom, styles.middleDragger]} {...bottomResponder.panHandlers} />
-            <View style={[styles.dragger, styles.bottomLeft]} {...bottomLeftResponder.panHandlers} />
-            <View style={[styles.dragger, styles.left, styles.middleDragger]} {...leftResponder.panHandlers} />
-          </View>
+            onCropComplete(manipResult.uri);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to crop image.');
+        }
+        setLoading(false);
+    };
+    
+    // PanResponder for moving the entire crop box
+    const movePanResponder = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderMove: (_, gestureState) => {
+            const { dx, dy } = gestureState;
+            setCropArea(prev => {
+                let newX = prev.x + dx;
+                let newY = prev.y + dy;
+
+                // Keep within actual image bounds
+                newX = Math.max(
+                    actualImageLayout.x, 
+                    Math.min(actualImageLayout.x + actualImageLayout.width - prev.width, newX)
+                );
+                newY = Math.max(
+                    actualImageLayout.y, 
+                    Math.min(actualImageLayout.y + actualImageLayout.height - prev.height, newY)
+                );
+                
+                return { ...prev, x: newX, y: newY };
+            });
+        }
+    });
+    
+    const createEdgePanResponder = (edge: string) => {
+        return PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+            onPanResponderMove: (_, gestureState) => {
+                const { dx, dy } = gestureState;
+                
+                setCropArea(prev => {
+                    let newX = prev.x;
+                    let newY = prev.y;
+                    let newWidth = prev.width;
+                    let newHeight = prev.height;
+                    
+                    // Handle resize based on which edge is being dragged
+                    if (edge === 'topLeft') {
+                        newX = prev.x + dx;
+                        newY = prev.y + dy;
+                        newWidth = prev.width - dx;
+                        newHeight = prev.height - dy;
+                    } else if (edge === 'topRight') {
+                        newY = prev.y + dy;
+                        newWidth = prev.width + dx;
+                        newHeight = prev.height - dy;
+                    } else if (edge === 'bottomLeft') {
+                        newX = prev.x + dx;
+                        newWidth = prev.width - dx;
+                        newHeight = prev.height + dy;
+                    } else if (edge === 'bottomRight') {
+                        newWidth = prev.width + dx;
+                        newHeight = prev.height + dy;
+                    } else if (edge === 'left') {
+                        newX = prev.x + dx;
+                        newWidth = prev.width - dx;
+                    } else if (edge === 'right') {
+                        newWidth = prev.width + dx;
+                    } else if (edge === 'top') {
+                        newY = prev.y + dy;
+                        newHeight = prev.height - dy;
+                    } else if (edge === 'bottom') {
+                        newHeight = prev.height + dy;
+                    }
+                    
+                    // Calculate image boundaries once
+                    const imageRight = actualImageLayout.x + actualImageLayout.width;
+                    const imageBottom = actualImageLayout.y + actualImageLayout.height;
+
+                    // Bounds check
+                    if (newX < actualImageLayout.x) {
+                        newWidth = newWidth - (actualImageLayout.x - newX);
+                        newX = actualImageLayout.x;
+                    }
+                    if (newY < actualImageLayout.y) {
+                        newHeight = newHeight - (actualImageLayout.y - newY);
+                        newY = actualImageLayout.y;
+                    }
+                    if (newX + newWidth > imageRight) newWidth = imageRight - newX;
+                    if (newY + newHeight > imageBottom) newHeight = imageBottom - newY;
+
+                    // Minimum size check
+                    if (newWidth < MIN_CROP_SIZE) {
+                        // Choose which side to adjust based on which edge was dragged
+                        if (edge.includes('left')) {
+                            // If dragging left edge, adjust x position
+                            newX = Math.max(actualImageLayout.x, prev.x + prev.width - MIN_CROP_SIZE);
+                        } else if (edge.includes('right') && newX + MIN_CROP_SIZE > imageRight) {
+                            // If dragging right edge and min size doesn't fit, adjust x to make it fit
+                            newX = Math.max(actualImageLayout.x, imageRight - MIN_CROP_SIZE);
+                        }
+                        newWidth = Math.min(MIN_CROP_SIZE, imageRight - newX);
+                    }
+                    
+                    if (newHeight < MIN_CROP_SIZE) {
+                        // Choose which side to adjust based on which edge was dragged
+                        if (edge.includes('top')) {
+                            // If dragging top edge, adjust y position
+                            newY = Math.max(actualImageLayout.y, prev.y + prev.height - MIN_CROP_SIZE);
+                        } else if (edge.includes('bottom') && newY + MIN_CROP_SIZE > imageBottom) {
+                            // If dragging bottom edge and min size doesn't fit, adjust y to make it fit
+                            newY = Math.max(actualImageLayout.y, imageBottom - MIN_CROP_SIZE);
+                        }
+                        newHeight = Math.min(MIN_CROP_SIZE, imageBottom - newY);
+                    }
+                    
+                    // Aspect ratio limit
+                    const aspectRatio = newWidth / newHeight;
+                    if (aspectRatio < MIN_ASPECT_RATIO) {
+                        // Adjust width or height to maintain minimum aspect ratio
+                        if (edge.includes('left') || edge.includes('right')) {
+                            const newTargetWidth = newHeight * MIN_ASPECT_RATIO;
+                            // Make sure we don't exceed image boundaries
+                            if (newX + newTargetWidth <= imageRight) {
+                                newWidth = newTargetWidth;
+                            } else {
+                                // If we would exceed boundaries, adjust both to fit
+                                newWidth = imageRight - newX;
+                                newHeight = newWidth / MIN_ASPECT_RATIO;
+                            }
+                        } else {
+                            const newTargetHeight = newWidth / MIN_ASPECT_RATIO;
+                            // Make sure we don't exceed image boundaries
+                            if (newY + newTargetHeight <= imageBottom) {
+                                newHeight = newTargetHeight;
+                            } else {
+                                // If we would exceed boundaries, adjust both to fit
+                                newHeight = imageBottom - newY;
+                                newWidth = newHeight * MIN_ASPECT_RATIO;
+                            }
+                        }
+                    } else if (aspectRatio > MAX_ASPECT_RATIO) {
+                        if (edge.includes('left') || edge.includes('right')) {
+                            const newTargetWidth = newHeight * MAX_ASPECT_RATIO;
+                            if (newX + newTargetWidth <= imageRight) {
+                                newWidth = newTargetWidth;
+                            } else {
+                                newWidth = imageRight - newX;
+                                newHeight = newWidth / MAX_ASPECT_RATIO;
+                            }
+                        } else {
+                            const newTargetHeight = newWidth / MAX_ASPECT_RATIO;
+                            if (newY + newTargetHeight <= imageBottom) {
+                                newHeight = newTargetHeight;
+                            } else {
+                                newHeight = imageBottom - newY;
+                                newWidth = newHeight * MAX_ASPECT_RATIO;
+                            }
+                        }
+                    }
+                    
+                    // Minimum size check
+                    // this one is the one that actually enforces minimum size restriction
+                    // the other previous one we have just in case
+                    if (newWidth < MIN_CROP_SIZE) {
+                        newWidth = Math.min(MIN_CROP_SIZE, imageRight - newX);
+                        // If we still can't achieve min width, adjust position if possible
+                        if (newWidth < MIN_CROP_SIZE && newX > actualImageLayout.x) {
+                            const adjustment = Math.min(newX - actualImageLayout.x, MIN_CROP_SIZE - newWidth);
+                            newX -= adjustment;
+                            newWidth += adjustment;
+                        }
+                    }
+                    
+                    if (newHeight < MIN_CROP_SIZE) {
+                        newHeight = Math.min(MIN_CROP_SIZE, imageBottom - newY);
+                        // If we still can't achieve min height, adjust position if possible
+                        if (newHeight < MIN_CROP_SIZE && newY > actualImageLayout.y) {
+                            const adjustment = Math.min(newY - actualImageLayout.y, MIN_CROP_SIZE - newHeight);
+                            newY -= adjustment;
+                            newHeight += adjustment;
+                        }
+                    }
+                    
+                    return { x: newX, y: newY, width: newWidth, height: newHeight };
+                });
+            }
+        });
+    }
+
+    // Create PanResponders for each corner and edge
+    const topLeftResponder = createEdgePanResponder('topLeft');
+    const topResponder = createEdgePanResponder('top');
+    const topRightResponder = createEdgePanResponder('topRight');
+    const rightResponder = createEdgePanResponder('right');
+    const bottomRightResponder = createEdgePanResponder('bottomRight');
+    const bottomResponder = createEdgePanResponder('bottom');
+    const bottomLeftResponder = createEdgePanResponder('bottomLeft');
+    const leftResponder = createEdgePanResponder('left');
+    
+    // Handle container layout changes
+    const handleContainerLayout = (event: LayoutChangeEvent) => {
+        const { width, height, x, y } = event.nativeEvent.layout;
+        setContainerLayout({ width, height, x, y });
+    }
+    
+    return (
+        <Fragment>
+            <View style={styles.container}>
+                <SafeAreaTop />
+                <View
+                    style={[styles.imageContainer, { width: '100%', maxHeight: '70%' }]}
+                    onLayout={handleContainerLayout}
+                >
+                    <Image source={{ uri: imageUri }} style={styles.image} />
+                    
+                    {actualImageLayout.width > 0 && (
+                        <View style={[styles.overlay, { width: actualImageLayout.width, height: actualImageLayout.height,   }]}>
+                            {/* Semi-transparent overlay that excludes the crop area */}
+                            <View style={[
+                                styles.overlayRegion,
+                                {
+                                    top: 0,
+                                    left: actualImageLayout.x,
+                                    width: '100%',
+                                    height: cropArea.y
+                                }
+                            ]} />
+                            <View style={[
+                                styles.overlayRegion,
+                                {
+                                    top: cropArea.y + cropArea.height,
+                                    left: actualImageLayout.x,
+                                    width: '100%',
+                                    height: actualImageLayout.y + actualImageLayout.height - (cropArea.y + cropArea.height)
+                                }
+                            ]} />
+                            <View style={[
+                                styles.overlayRegion,
+                                {
+                                    top: cropArea.y,
+                                    left: actualImageLayout.x,
+                                    width: cropArea.x - actualImageLayout.x,
+                                    height: cropArea.height
+                                }
+                            ]} />
+                            <View style={[
+                                styles.overlayRegion,
+                                {
+                                    top: cropArea.y,
+                                    left: cropArea.x + cropArea.width,
+                                    width: actualImageLayout.x + actualImageLayout.width - (cropArea.x + cropArea.width),
+                                    height: cropArea.height
+                                }
+                            ]} />
+
+                            {/* Cutout for the crop area */}
+                            <View
+                                style={[
+                                    styles.cropArea,
+                                    {
+                                        left: cropArea.x,
+                                        top: cropArea.y,
+                                        width: cropArea.width,
+                                        height: cropArea.height,
+                                    }
+                                ]}
+                            >
+                                {/* Move handle (center area) */}
+                                <View style={styles.moveHandle} {...movePanResponder.panHandlers} />
+                                
+                                {/* Corner and edge handles */}
+                                <Dagger customStyle={styles.topLeft} panHandlers={topLeftResponder.panHandlers} />
+                                <Dagger customStyle={[styles.top, styles.horizontalMiddleDragger]} panHandlers={topResponder.panHandlers} />
+                                <Dagger customStyle={styles.topRight} panHandlers={topRightResponder.panHandlers} />
+                                <Dagger customStyle={[styles.right, styles.verticalMiddleDragger]} panHandlers={rightResponder.panHandlers} />
+                                <Dagger customStyle={styles.bottomRight} panHandlers={bottomRightResponder.panHandlers} />
+                                <Dagger customStyle={[styles.bottom, styles.horizontalMiddleDragger]} panHandlers={bottomResponder.panHandlers} />
+                                <Dagger customStyle={styles.bottomLeft} panHandlers={bottomLeftResponder.panHandlers} />
+                                <Dagger customStyle={[styles.left, styles.verticalMiddleDragger]} panHandlers={leftResponder.panHandlers} />
+                            </View>
+                        </View>
+                    )}
+                </View>
+                
+                <View style={styles.buttonContainer}>
+                    <TouchableOpacity style={styles.button} onPress={() => setUri('')}>
+                        <Text style={styles.buttonText}>Retake</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, { backgroundColor: COLORS.primary }]} onPress={handleCrop}>
+                        <Text style={styles.buttonText}>Continue</Text>
+                    </TouchableOpacity>
+                </View>
+
+            </View>
+
+            {loading && <LoadingScreen />}
+        </Fragment>
+    );
+}
+
+
+
+function Dagger({ customStyle, panHandlers }: { customStyle: StyleProp<ViewStyle>, panHandlers: GestureResponderHandlers }) {
+    return <View hitSlop={DAGGER_HITSLOP} style={[styles.dragger, customStyle]} {...panHandlers} />;
+}
+
+
+
+function LoadingScreen() {
+    return (
+        <View style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignContent: 'center' }}>
+            <ActivityIndicator size='large' color={COLORS.white} />
         </View>
-      </View>
-      
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={onCancel}>
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleCrop}>
-          <Text style={[styles.buttonText, styles.primaryButtonText]}>Crop</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
+    )
+}
+
+
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#000',
-  },
-  header: {
-    padding: 15,
-    backgroundColor: '#000',
-  },
-  title: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  aspectRatio: {
-    color: '#ddd',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 5,
-  },
-  imageContainer: {
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overlay: {
-    position: 'absolute',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  cropArea: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: '#fff',
-    backgroundColor: 'transparent',
-  },
-  dragger: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-    borderWidth: 1,
-    borderColor: '#fff',
-  },
-  middleDragger: {
-    width: 20,
-    height: 20,
-  },
-  topLeft: {
-    top: 0,
-    left: 0,
-    transform: [
-        { translateX: '-50%' },
-        { translateY: '-50%' }
-    ],
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    transform: [
-        { translateX: '50%' },
-        { translateY: '-50%' }
-    ],
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    transform: [
-        { translateX: '-50%' },
-        { translateY: '50%' }
-    ],
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    transform: [
-        { translateX: '50%' },
-        { translateY: '50%' }
-    ],
-  },
-  top: {
-    top: -10,
-    left: '50%',
-    marginLeft: -10,
-  },
-  right: {
-    top: '50%',
-    right: -10,
-    marginTop: -10,
-  },
-  bottom: {
-    bottom: -10,
-    left: '50%',
-    marginLeft: -10,
-  },
-  left: {
-    top: '50%',
-    left: -10,
-    marginTop: -10,
-  },
-  moveHandle: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'transparent',
-    zIndex: 5,
-  },
-  gridLine: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  horizontalTop: {
-    width: '100%',
-    height: 1,
-    top: '33.33%',
-  },
-  horizontalMiddle: {
-    width: '100%',
-    height: 1,
-    top: '50%',
-  },
-  horizontalBottom: {
-    width: '100%',
-    height: 1,
-    top: '66.66%',
-  },
-  verticalLeft: {
-    width: 1,
-    height: '100%',
-    left: '33.33%',
-  },
-  verticalMiddle: {
-    width: 1,
-    height: '100%',
-    left: '50%',
-  },
-  verticalRight: {
-    width: 1,
-    height: '100%',
-    left: '66.66%',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 15,
-    backgroundColor: COLORS.white,
-  },
-  button: {
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    backgroundColor: '#333',
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  primaryButton: {
-    backgroundColor: '#0080ff',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  primaryButtonText: {
-    color: '#fff',
-  },
+    container: {
+        flex: 1,
+        padding: 20,
+        alignItems: 'center',
+        backgroundColor: COLORS.background,
+    },
+    imageContainer: {
+        position: 'relative',
+        backgroundColor: COLORS.light_gray,
+        overflow: 'hidden',
+        borderRadius: 10
+    },
+    image: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'contain'
+    },
+    overlay: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'transparent',
+    },
+    overlayRegion: {
+        position: 'absolute',
+        backgroundColor: OVERLAY_SHADOW
+    },
+    cropArea: {
+        position: 'absolute',
+        borderWidth: 1,
+        borderColor: '#fff',
+        backgroundColor: 'transparent',
+    },
+    dragger: {
+        position: 'absolute',
+        width: DAGGER_SIZE,
+        height: DAGGER_SIZE,
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+        borderWidth: 1,
+        borderColor: '#fff',
+    },
+    verticalMiddleDragger: {
+        width: DAGGER_SIZE - 10,
+        height: DAGGER_SIZE + 40,
+    },
+    horizontalMiddleDragger: {
+        width: DAGGER_SIZE + 40,
+        height: DAGGER_SIZE - 10,
+    },
+    topLeft: {
+        top: 0,
+        left: 0,
+        transform: TRANSLATE('-50%', '-50%')
+    },
+    topRight: {
+        top: 0,
+        right: 0,
+        transform: TRANSLATE('50%', '-50%')
+    },
+    bottomLeft: {
+        bottom: 0,
+        left: 0,
+        transform: TRANSLATE('-50%', '50%')
+    },
+    bottomRight: {
+        bottom: 0,
+        right: 0,
+        transform: TRANSLATE('50%', '50%')
+    },
+    top: {
+        top: 0,
+        right: '50%',
+        transform: TRANSLATE('50%', '-50%')
+    },
+    right: {
+        top: '50%',
+        right: 0,
+        transform: TRANSLATE('50%', '-50%')
+    },
+    bottom: {
+        bottom: 0,
+        left: '50%',
+        transform: TRANSLATE('-50%', '50%')
+    },
+    left: {
+        top: '50%',
+        left: 0,
+        transform: TRANSLATE('-50%', '-50%')
+    },
+    moveHandle: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        zIndex: 5,
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '90%',
+        marginTop: 20
+    },
+    button: {
+        paddingVertical: 12,
+        paddingHorizontal: 30,
+        borderRadius: 8,
+        backgroundColor: COLORS.gray,
+        minWidth: 120,
+        alignItems: 'center',
+    },
+    buttonText: {
+        color: COLORS.white,
+        fontSize: FONT_SIZES.m,
+        fontWeight: '600',
+    }
 });
-
-export default ImageCropper;
