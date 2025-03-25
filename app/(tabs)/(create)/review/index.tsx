@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import { useLocalSearchParams } from 'expo-router';
 
-import Review from '@screens/post/Create/Review';
+import Review from '@screens/post/Create/review/Review';
 
 import GoBackHeader from '@components/GoBackHeader';
 
