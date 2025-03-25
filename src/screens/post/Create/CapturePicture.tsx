@@ -17,9 +17,14 @@ import { COLORS } from '@util/global-client';
 
 
 
-export default function CapturePicture() {
-    const [permission, requestPermission] = useCameraPermissions();
+interface CapturePictureProps {
+    setUri: (uri: string) => void;
+}
 
+export default function CapturePicture({ setUri }: CapturePictureProps) {
+    const router = useRouter();
+
+    const [permission, requestPermission] = useCameraPermissions();
     const [direction, setDirection] = useState<CameraType>('back');
     const [flash, setFlash] = useState<'on' | 'off'>('off');
 
@@ -27,24 +32,18 @@ export default function CapturePicture() {
 
     const insets = useSafeAreaInsets();
 
-    const router = useRouter();
-
 
     const takePhoto = async () => {
         if (!cameraRef.current || !permission?.granted) return;
-        const options = {
+
+        const picture = await cameraRef.current.takePictureAsync({
             quality: 1,
             base64: false,
-            exif: false,
-            flash: flash
-        };
-        const picture = await cameraRef.current.takePictureAsync(options);
+            exif: false
+        });
         if (picture == undefined) return;
 
-        router.push({
-            pathname: '/(tabs)/(create)/crop',
-            params: { pictureUri: picture.uri }
-        });
+        setUri(picture.uri);
     }
 
     const toggleFlash = () => setFlash((prev) => (prev == 'off') ? 'on' : 'off');
@@ -59,7 +58,7 @@ export default function CapturePicture() {
 
 
     return (
-        <CameraView style={styles.camera} facing={direction} ref={cameraRef}>
+        <CameraView style={styles.camera} facing={direction} ref={cameraRef} flash={flash}>
             <Pressable style={[{ position: 'absolute', left: '5%', top: insets.top }, styles.button]} onPress={router.back}>
                 <Ionicons name='chevron-back' size={25} color={COLORS.primary} />
             </Pressable>
@@ -89,7 +88,8 @@ export default function CapturePicture() {
 
 const styles = StyleSheet.create({
     camera: {
-        flex: 1
+        flex: 1,
+        backgroundColor: COLORS.black
     },
     buttonContainer: {
         width: '100%',
