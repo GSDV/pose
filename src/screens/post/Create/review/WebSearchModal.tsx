@@ -58,6 +58,14 @@ export default function WebSearchModal({ modalVisible, webUrl, handleCancel, set
         if (webViewRef.current && canGoForward) webViewRef.current.goForward();
     }
 
+    const goToGoogle = () => {
+        if (!webViewRef.current) return;
+        webViewRef.current.injectJavaScript(`
+            window.location.href = 'https://www.google.com/';
+            true;
+        `);
+    }
+
     const handleNavigationStateChange = (navState: WebViewNavigation) => {
         setCurrentUrl(navState.url);
         setCanGoBack(navState.canGoBack);
@@ -150,19 +158,26 @@ export default function WebSearchModal({ modalVisible, webUrl, handleCancel, set
             />
 
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom }]}>
-                <Ionicons
-                    name='chevron-back'
-                    style={[styles.navButton, !canGoBack && styles.disabledButton]}
-                    onPress={goBack}
-                    disabled={!canGoBack}
-                />
+                <View style={{ flexDirection: 'row', gap: 20 }}>
+                    <Ionicons
+                        name='chevron-back'
+                        style={[styles.navButton, !canGoBack && styles.disabledButton]}
+                        onPress={goBack}
+                        disabled={!canGoBack}
+                    />
+                    <Ionicons
+                        name='chevron-forward'
+                        style={[styles.navButton, !canGoForward && styles.disabledButton]}
+                        onPress={goForward}
+                        disabled={!canGoForward}
+                    />
+                </View>
 
                 <Ionicons
-                    name='chevron-forward'
-                    style={[styles.navButton, !canGoForward && styles.disabledButton]}
-                    onPress={goForward}
-                    disabled={!canGoForward}
-                />
+                        name='search'
+                        style={styles.navButton}
+                        onPress={goToGoogle}
+                    />
             </View>
         </Modal>
     );
@@ -177,15 +192,16 @@ const styles = StyleSheet.create({
         padding: 10,
         backgroundColor: COLORS.background,
         borderBottomWidth: 2,
-        borderBottomColor: COLORS.primary,
+        borderBottomColor: COLORS.primary
     },
     bottomBar: {
         flexDirection: 'row',
         padding: 5,
+        justifyContent: 'space-between',
         gap: 20,
         backgroundColor: COLORS.background,
         borderTopWidth: 2,
-        borderTopColor: COLORS.primary,
+        borderTopColor: COLORS.primary
     },
     navButton: {
         padding: 10,
@@ -195,9 +211,9 @@ const styles = StyleSheet.create({
     buttonText: {
         color: COLORS.primary,
         fontSize: FONT_SIZES.m,
-        fontWeight: '500',
+        fontWeight: '500'
     },
     disabledButton: {
-        color: COLORS.light_gray,
+        color: COLORS.light_gray
     }
 });
