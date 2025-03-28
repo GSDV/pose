@@ -7,12 +7,14 @@ export const PRIMARY = 'rgb(242, 103, 61)';
 export const SECONDARY = 'rgb(255, 174, 150)';
 export const WHITE = 'rgb(255, 255, 255)';
 export const LIGHT_GRAY = 'rgb(240, 240, 240)';
+export const MEDIUM_GRAY = 'rgb(189, 189, 189)';
 export const GRAY = 'rgb(130, 130, 130)';
 export const BLACK = 'rgb(20, 20, 20)';
 export const RED = 'rgb(242, 56, 56)';
 export const COLORS = {
     white: WHITE,
     light_gray: LIGHT_GRAY,
+    medium_gray: MEDIUM_GRAY,
     gray: GRAY,
     black: BLACK,
     primary: PRIMARY,
