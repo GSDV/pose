@@ -394,10 +394,10 @@ export default function CropPicture({ imageUri, setUri, onCropComplete }: ImageC
                             <View style={[
                                 styles.overlayRegion,
                                 {
-                                    top: 0,
+                                    top: actualImageLayout.y,
                                     left: actualImageLayout.x,
                                     width: '100%',
-                                    height: cropArea.y
+                                    height: (cropArea.y- actualImageLayout.y)
                                 }
                             ]} />
                             <View style={[
