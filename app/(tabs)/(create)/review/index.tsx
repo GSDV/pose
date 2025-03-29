@@ -4,8 +4,6 @@ import { useLocalSearchParams } from 'expo-router';
 
 import Review from '@screens/post/Create/review/Review';
 
-import GoBackHeader from '@components/GoBackHeader';
-
 
 
 export default function Index() {
@@ -13,7 +11,6 @@ export default function Index() {
 
     return (
         <View style={{ flex: 1 }}>
-            <GoBackHeader />
             <Review pictureUri={pictureUri} />
         </View>
     );
