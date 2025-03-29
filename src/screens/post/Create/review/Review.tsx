@@ -12,14 +12,20 @@ import {
     KeyboardAvoidingView,
     Keyboard,
     Platform,
-    Dimensions
+    Dimensions,
+    TouchableOpacity
 } from 'react-native';
 
+import { useRouter } from 'expo-router';
+
 import { ScrollView } from 'react-native-gesture-handler';
+
+import { Ionicons } from '@expo/vector-icons';
 
 import BrandSearchModal from './BrandSearchModal';
 import WebSearchModal, { ProductData } from './WebSearchModal';
 import ReviewInfoDot, { DOT_SIZE } from '@components/post/dot/ReviewInfoDot';
+import { SafeAreaTop } from '@components/SafeArea';
 
 import { MAX_CAPTION_LENGTH } from '@util/global';
 import { COLORS, DEFAULT_DOT_COLOR, FONT_SIZES } from '@util/global-client';
@@ -36,6 +42,8 @@ interface Coords {
 
 
 export default function Review({ pictureUri }: { pictureUri: string }) {
+    const router = useRouter();
+
     const [dots, setDots] = useState<ReviewDot[]>([]);
 
     const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
@@ -115,6 +123,12 @@ export default function Review({ pictureUri }: { pictureUri: string }) {
         resetCurrentDot();
     }
 
+
+    const attemptPost = () => {
+        Keyboard.dismiss();
+        console.log('posting...')
+    }
+
     useEffect(() => {
         if (!pictureUri) return;
         Image.getSize(
@@ -154,6 +168,16 @@ export default function Review({ pictureUri }: { pictureUri: string }) {
             style={{ flex: 1 }}
             enabled={!brandModalVisible && !webModalVisible}
         >
+            <SafeAreaTop />
+            <View style={{ padding: 10, flexDirection: 'row', justifyContent: 'space-between' }}>
+                <TouchableOpacity style={{ paddingLeft: 5, width: 50 }} onPress={router.back}>
+                    <Ionicons name='chevron-back' size={25} color={COLORS.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity style={{ paddingRight: 5 }} onPress={attemptPost}>
+                    <Text style={{ padding: 5, paddingHorizontal: 10, backgroundColor: COLORS.primary, borderRadius: 5, color: COLORS.white, fontSize: FONT_SIZES.m }}>Post</Text>
+                </TouchableOpacity>
+            </View>
+            
             <ScrollView 
                 ref={scrollViewRef}
                 style={{ flex: 1 }} 
@@ -161,6 +185,7 @@ export default function Review({ pictureUri }: { pictureUri: string }) {
                 keyboardShouldPersistTaps='handled'
                 showsVerticalScrollIndicator={true}
             >
+
                 <TouchableWithoutFeedback onPress={handleImageTap}>
                     <View 
                         style={[styles.imageContainer, { height: screenHeight * 0.60 }]} 
