@@ -1,4 +1,5 @@
 export interface ReviewDot {
+    id: string;
     title: string;
     price: string;
     currency: string;
