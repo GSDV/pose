@@ -30,10 +30,10 @@ export const DOT_SIZE = 20;
 const currencySymbols = ['$', '€', '£'];
 
 interface InfoDotProps {
-    dot: ReviewDot,
-    x: number,
-    y: number,
-    removeDot: ()=>void
+    dot: ReviewDot;
+    x: number;
+    y: number;
+    removeDot: ()=>void;
 }
 
 export default function ReviewInfoDot({ dot: initialDot, x, y, removeDot }: InfoDotProps) {
