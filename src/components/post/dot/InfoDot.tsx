@@ -24,8 +24,8 @@ export const LARGE_DOT_SIZE = 25;
 
 
 interface InfoDotProps {
-    dot: Dot,
-    x: number,
+    dot: Dot;
+    x: number;
     y: number;
     expanded: boolean;
 }
