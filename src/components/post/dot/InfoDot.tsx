@@ -15,7 +15,6 @@ import {
 import { COLORS, FONT_SIZES } from '@util/global-client';
 
 import { Dot } from '@util/types';
-import { Ionicons } from '@expo/vector-icons';
 
 
 
@@ -173,61 +172,5 @@ const styles = StyleSheet.create({
     modalImage: {
         width: '60%',
         aspectRatio: 1
-    },
-    modalInputTitle: {
-        fontSize: FONT_SIZES.s,
-        color: COLORS.black
-    },
-    modalInput: {
-        borderBottomWidth: 1,
-        borderColor: COLORS.black,
-        fontSize: FONT_SIZES.m
-    },
-    priceContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: '100%'
-    },
-    currencyDropdownContainer: {
-        position: 'relative',
-        marginRight: 8,
-        zIndex: 2
-    },
-    currencyDropdownButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderWidth: 1,
-        borderColor: COLORS.black,
-        borderRadius: 4,
-        minWidth: 45
-    },
-    dropdownList: {
-        position: 'absolute',
-        top: '100%',
-        left: 0,
-        backgroundColor: COLORS.white,
-        borderWidth: 1,
-        borderColor: COLORS.black,
-        borderRadius: 5,
-        width: '100%',
-        shadowColor: COLORS.black,
-        shadowOffset: {
-            width: 0,
-            height: 2
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3,
-        elevation: 5,
-        zIndex: 3,
-        overflow: 'hidden'
-    },
-    button: {
-        backgroundColor: COLORS.primary,
-        padding: 10,
-        alignItems: 'center',
-        borderRadius: 5
     }
 });
