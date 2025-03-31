@@ -12,13 +12,17 @@ import {
     Easing
 } from 'react-native';
 
-
 import { COLORS, FONT_SIZES } from '@util/global-client';
 
 import { Dot } from '@util/types';
+import { Ionicons } from '@expo/vector-icons';
 
-export const DOT_SIZE = 8;
-export const LARGE_DOT_SIZE = 20;
+
+
+export const DOT_SIZE = 10;
+export const LARGE_DOT_SIZE = 25;
+
+
 
 interface InfoDotProps {
     dot: Dot,
@@ -38,46 +42,65 @@ export default function InfoDot({ dot, x, y, expanded }: InfoDotProps) {
             toValue: expanded ? LARGE_DOT_SIZE : DOT_SIZE,
             duration: 300, // Animation duration in ms
             easing: Easing.elastic(1), // Elastic effect for bouncy feel
-            useNativeDriver: false,
+            useNativeDriver: false // Must be false for width/height animations
         }).start();
     }, [expanded, dotSize]);
 
     const openModal = () => setModalVisible(true);
-    const closeModal = () => {
-        setModalVisible(false);
-    };
+    const closeModal = () => setModalVisible(false);
 
-    // Calculate dynamic styles based on animated value
-    const dynamicStyles = {
-        width: dotSize,
-        height: dotSize,
-        borderRadius: Animated.divide(dotSize, 2),
-        // Adjust position to keep the dot centered when it grows
-        transform: [
-            { translateX: Animated.multiply(dotSize, -0.5) },
-            { translateY: Animated.multiply(dotSize, -0.5) }
-        ],
-        borderWidth: dotSize.interpolate({
-            inputRange: [DOT_SIZE, LARGE_DOT_SIZE],
-            outputRange: [1, 2],
-        }),
-        zIndex: expanded ? 10 : 1, // Ensure larger dots are above smaller ones
-    };
+    // Calculate position based on the dot size
+    const translateX = dotSize.interpolate({
+        inputRange: [DOT_SIZE, LARGE_DOT_SIZE],
+        outputRange: [-DOT_SIZE/2, -LARGE_DOT_SIZE/2]
+    });
+    
+    const translateY = dotSize.interpolate({
+        inputRange: [DOT_SIZE, LARGE_DOT_SIZE],
+        outputRange: [-DOT_SIZE/2, -LARGE_DOT_SIZE/2]
+    });
+
+    const borderWidth = dotSize.interpolate({
+        inputRange: [DOT_SIZE, LARGE_DOT_SIZE],
+        outputRange: [2, 2]
+    });
+
+    const borderRadius = dotSize.interpolate({
+        inputRange: [DOT_SIZE, LARGE_DOT_SIZE],
+        outputRange: [DOT_SIZE/2, LARGE_DOT_SIZE/2]
+    });
 
     return (
         <Fragment>
             <Animated.View
                 style={[
                     styles.container,
-                    { left: x, top: y, backgroundColor: dot.color },
-                    dynamicStyles
+                    {
+                        transform: [ { translateX }, { translateY } ],
+                        left: x,
+                        top: y,
+                        zIndex: expanded ? 10 : 1
+                    }
                 ]}
             >
                 <TouchableOpacity
                     style={styles.touchableArea}
                     onPress={openModal}
                     hitSlop={10}
-                />
+                    activeOpacity={0.6}
+                >
+                    <Animated.View 
+                        style={{
+                            width: dotSize,
+                            height: dotSize,
+                            borderRadius,
+                            borderWidth,
+                            borderColor: COLORS.white,
+                            backgroundColor: 'transparent',
+                            overflow: 'hidden'
+                        }}
+                    />
+                </TouchableOpacity>
             </Animated.View>
 
             <Modal
@@ -88,7 +111,7 @@ export default function InfoDot({ dot, x, y, expanded }: InfoDotProps) {
             >
                 <View style={styles.shadowBackground}>
                     <Pressable style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }} onPress={closeModal}>
-                        <View style={styles.modalView}>
+                        <Pressable style={styles.modalView} onPress={(e) => e.stopPropagation()}>
                             <View style={styles.modalImageContainer}>
                                 <Image
                                     source={{ uri: dot.imageUrl }}
@@ -102,7 +125,7 @@ export default function InfoDot({ dot, x, y, expanded }: InfoDotProps) {
                                 <Text style={{ fontSize: FONT_SIZES.m, color: COLORS.black, fontWeight: '300' }}>{dot.currency}{dot.price}</Text>
                                 <Text style={{ fontSize: FONT_SIZES.m, color: COLORS.black, fontWeight: '300' }}>From <Text style={{ color: COLORS.primary, textDecorationColor: COLORS.primary, textDecorationLine: 'underline' }}>{dot.brand}</Text></Text>
                             </View>
-                        </View>
+                        </Pressable>
                     </Pressable>
                 </View>
             </Modal>
@@ -113,13 +136,11 @@ export default function InfoDot({ dot, x, y, expanded }: InfoDotProps) {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        borderColor: COLORS.white,
-        borderWidth: 1,
-        // Note: transform properties moved to dynamic styles
+        overflow: 'hidden'
     },
     touchableArea: {
         width: '100%',
-        height: '100%',
+        height: '100%'
     },
     shadowBackground: {
         flex: 1,
